@@ -3,6 +3,8 @@ import { Maze, CellType } from './core/Maze.js';
 import { createPlayer, movePlayer, drawCellOnMap } from './core/Player.js';
 import { Player } from './core/Player.js';
 import { VisionSystem } from './systems/VisionSystem.js';
+import { LightSystem, LightSourceType } from './systems/LightSystem.js';
+import { MemorySystem } from './systems/MemorySystem.js';
 import { MazeRenderer } from './rendering/MazeRenderer.js';
 import { MapRenderer } from './rendering/MapRenderer.js';
 import { InputHandler } from './input/InputHandler.js';
@@ -11,6 +13,8 @@ class Game {
     private maze!: Maze;
     private player!: Player;
     private visionSystem: VisionSystem;
+    private lightSystem: LightSystem;
+    private memorySystem: MemorySystem;
     private mazeRenderer: MazeRenderer;
     private mapRenderer: MapRenderer;
     private inputHandler: InputHandler;
@@ -18,6 +22,8 @@ class Game {
     private mazeCanvas: HTMLCanvasElement;
     private mapCanvas: HTMLCanvasElement;
     private messageLog: HTMLElement;
+    
+    private lastUpdateTime: number = Date.now();
     
     constructor() {
         // 获取Canvas元素
@@ -27,9 +33,14 @@ class Game {
         
         // 初始化系统
         this.visionSystem = new VisionSystem();
+        this.lightSystem = new LightSystem();
+        this.memorySystem = new MemorySystem();
         this.mazeRenderer = new MazeRenderer(this.mazeCanvas, 16);
         this.mapRenderer = new MapRenderer(this.mapCanvas);
         this.inputHandler = new InputHandler();
+        
+        // 启动游戏循环
+        this.startGameLoop();
         
         // 生成迷宫
         this.generateNewMaze();
@@ -63,6 +74,44 @@ class Game {
         this.inputHandler.on('move_right', () => this.move(1, 0));
         this.inputHandler.on('draw_map', () => this.drawMap());
         this.inputHandler.on('regenerate', () => this.regenerate());
+        
+        // 光源快捷键
+        this.inputHandler.on('equip_torch', () => this.equipLight(LightSourceType.TORCH));
+        this.inputHandler.on('equip_lantern', () => this.equipLight(LightSourceType.LANTERN));
+    }
+    
+    private startGameLoop(): void {
+        const gameLoop = () => {
+            const now = Date.now();
+            const deltaTime = (now - this.lastUpdateTime) / 1000;
+            this.lastUpdateTime = now;
+            
+            // 更新光源系统
+            this.lightSystem.update(deltaTime);
+            this.lightSystem.updatePlayerVision(this.player);
+            
+            // 更新记忆系统
+            this.memorySystem.update(this.player, this.player.layer);
+            
+            // 更新视野
+            this.visionSystem.updateVisibility(this.maze, this.player);
+            
+            // 更新UI
+            this.updateUI();
+            
+            requestAnimationFrame(gameLoop);
+        };
+        
+        requestAnimationFrame(gameLoop);
+    }
+    
+    private equipLight(type: LightSourceType): void {
+        if (this.lightSystem.equipLightSource(this.player, type)) {
+            this.log(`装备了 ${this.lightSystem.getLightStatusText()}`, 'important');
+            this.lightSystem.updatePlayerVision(this.player);
+        } else {
+            this.log('背包中没有该光源', 'danger');
+        }
     }
     
     private move(dx: number, dy: number): void {

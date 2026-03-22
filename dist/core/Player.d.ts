@@ -1,3 +1,4 @@
+import { InventorySystem } from '../systems/InventorySystem.js';
 export interface Player {
     x: number;
     y: number;
@@ -5,10 +6,12 @@ export interface Player {
     stamina: number;
     maxStamina: number;
     visionRadius: number;
+    inventory: InventorySystem;
     paper: number;
     pencilDurability: number;
     torches: number;
     drawnCells: Map<string, DrawnCell>;
+    equippedLight: string | null;
 }
 export interface DrawnCell {
     x: number;

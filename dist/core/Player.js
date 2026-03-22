@@ -1,4 +1,11 @@
+import { InventorySystem, ItemType } from '../systems/InventorySystem.js';
 export function createPlayer(startX, startY) {
+    const inventory = new InventorySystem();
+    // 初始装备
+    inventory.addItem(ItemType.PENCIL, 1);
+    inventory.addItem(ItemType.TORCH, 3);
+    inventory.addItem(ItemType.PAPER_PARCHMENT, 3);
+    inventory.addItem(ItemType.FOOD, 2);
     return {
         x: startX,
         y: startY,
@@ -6,10 +13,12 @@ export function createPlayer(startX, startY) {
         stamina: 100,
         maxStamina: 100,
         visionRadius: 3,
+        inventory,
         paper: 5,
         pencilDurability: 100,
         torches: 3,
         drawnCells: new Map(),
+        equippedLight: null,
     };
 }
 export function getPlayerKey(player) {
