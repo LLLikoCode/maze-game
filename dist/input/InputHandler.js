@@ -39,6 +39,12 @@ export class InputHandler {
             'g': 'mark_stairs_down',
             'f5': 'save_game',
             'l': 'load_game',
+            '6': 'class_surveyor',
+            '7': 'class_explorer',
+            '8': 'class_archaeologist',
+            '9': 'class_survivalist',
+            '0': 'class_courier',
+            'c': 'show_achievements',
         };
         const action = actionMap[key];
         if (action) {

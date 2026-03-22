@@ -7,6 +7,9 @@ import { LightSystem, LightSourceType } from './systems/LightSystem.js';
 import { MemorySystem } from './systems/MemorySystem.js';
 import { MarkSystem, MarkType } from './systems/MarkSystem.js';
 import { SaveSystem } from './systems/SaveSystem.js';
+import { ClassSystem, PlayerClass } from './systems/ClassSystem.js';
+import { AchievementSystem } from './systems/AchievementSystem.js';
+import { EventSystem } from './systems/EventSystem.js';
 import { MazeRenderer } from './rendering/MazeRenderer.js';
 import { MapRenderer } from './rendering/MapRenderer.js';
 import { InputHandler } from './input/InputHandler.js';
@@ -25,9 +28,14 @@ class Game {
         this.memorySystem = new MemorySystem();
         this.markSystem = new MarkSystem();
         this.saveSystem = new SaveSystem();
+        this.classSystem = new ClassSystem();
+        this.achievementSystem = new AchievementSystem();
+        this.eventSystem = new EventSystem();
         this.mazeRenderer = new MazeRenderer(this.mazeCanvas, 16);
         this.mapRenderer = new MapRenderer(this.mapCanvas);
         this.inputHandler = new InputHandler();
+        // 显示职业选择
+        this.showClassSelection();
         // 尝试加载存档
         this.tryLoadSave();
         // 启动游戏循环
@@ -160,6 +168,44 @@ class Game {
         // 存档快捷键
         this.inputHandler.on('save_game', () => this.saveGame());
         this.inputHandler.on('load_game', () => this.loadGame());
+        // 职业选择快捷键
+        this.inputHandler.on('class_surveyor', () => this.selectClass(PlayerClass.SURVEYOR));
+        this.inputHandler.on('class_explorer', () => this.selectClass(PlayerClass.EXPLORER));
+        this.inputHandler.on('class_archaeologist', () => this.selectClass(PlayerClass.ARCHAEOLOGIST));
+        this.inputHandler.on('class_survivalist', () => this.selectClass(PlayerClass.SURVIVALIST));
+        this.inputHandler.on('class_courier', () => this.selectClass(PlayerClass.COURIER));
+        // 成就查看
+        this.inputHandler.on('show_achievements', () => this.showAchievements());
+    }
+    showClassSelection() {
+        this.log('=== 选择职业 ===', 'important');
+        const classes = this.classSystem.getAllClasses();
+        classes.forEach((cls, index) => {
+            this.log(`${index + 1}. ${cls.name} - ${cls.description}`);
+            this.log(`   特殊能力: ${cls.specialAbility}`);
+        });
+        this.log('按数字键 6-0 选择职业', 'important');
+    }
+    selectClass(playerClass) {
+        this.classSystem.selectClass(playerClass);
+        this.classSystem.applyClassBonuses(this.player);
+        const classData = this.classSystem.getCurrentClassData();
+        this.log(`选择了职业: ${classData.name}`, 'important');
+        this.log(`特殊能力: ${classData.specialAbility}`);
+        this.updateUI();
+    }
+    showAchievements() {
+        const unlocked = this.achievementSystem.getUnlockedCount();
+        const total = this.achievementSystem.getTotalCount();
+        const percentage = this.achievementSystem.getCompletionPercentage();
+        this.log('=== 成就系统 ===', 'important');
+        this.log(`进度: ${unlocked}/${total} (${percentage}%)`);
+        this.achievementSystem.getUnlockedAchievements().forEach(ach => {
+            this.log(`✅ ${ach.name}: ${ach.description}`);
+        });
+        this.achievementSystem.getLockedAchievements().slice(0, 3).forEach(ach => {
+            this.log(`🔒 ${ach.name}: ???`);
+        });
     }
     tryLoadSave() {
         if (this.saveSystem.hasSave()) {
