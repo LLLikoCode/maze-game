@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>迷雾绘者 - Mist Painter</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #1a1a1a;
+            color: #f5f0e1;
+            font-family: 'Microsoft YaHei', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        h1 {
+            color: #c9a227;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        .subtitle {
+            color: #8b7d6b;
+            margin-bottom: 20px;
+        }
+        
+        #game-container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        canvas {
+            border: 3px solid #3d2817;
+            background: #0a0a0a;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        
+        #maze-canvas {
+            background: #1a1a1a;
+        }
+        
+        #map-canvas {
+            background: #f5f0e1;
+        }
+        
+        .panel {
+            background: #2d2d2d;
+            border: 2px solid #3d2817;
+            border-radius: 8px;
+            padding: 15px;
+            min-width: 200px;
+        }
+        
+        .panel h3 {
+            color: #c9a227;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #3d2817;
+            padding-bottom: 5px;
+        }
+        
+        .stat {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            padding: 5px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 4px;
+        }
+        
+        .stat-label {
+            color: #8b7d6b;
+        }
+        
+        .stat-value {
+            color: #f5f0e1;
+            font-weight: bold;
+        }
+        
+        .controls {
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .controls h3 {
+            color: #c9a227;
+            margin-bottom: 10px;
+        }
+        
+        .key {
+            display: inline-block;
+            padding: 5px 10px;
+            margin: 2px;
+            background: #3d2817;
+            border: 1px solid #c9a227;
+            border-radius: 4px;
+            color: #f5f0e1;
+        }
+        
+        #message-log {
+            margin-top: 20px;
+            width: 100%;
+            max-width: 800px;
+            height: 100px;
+            background: #0a0a0a;
+            border: 2px solid #3d2817;
+            padding: 10px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        
+        .message {
+            margin: 2px 0;
+            color: #8b7d6b;
+        }
+        
+        .message.important {
+            color: #c9a227;
+        }
+        
+        .message.danger {
+            color: #8b3a3a;
+        }
+    </style>
+</head>
+<body>
+    <h1>🏺 迷雾绘者</h1>
+    <p class="subtitle">在迷雾笼罩的古代迷宫中，你是一名依靠手绘地图求生的探险者</p>
+    
+    <div id="game-container">
+        <div>
+            <canvas id="maze-canvas" width="480" height="480"></canvas>
+            <p style="text-align: center; color: #8b7d6b; margin-top: 5px;">游戏世界</p>
+        </div>
+        
+        <div>
+            <canvas id="map-canvas" width="400" height="400"></canvas>
+            <p style="text-align: center; color: #8b7d6b; margin-top: 5px;">手绘地图</p>
+        </div>
+        
+        <div class="panel">
+            <h3>📊 状态</h3>
+            <div class="stat">
+                <span class="stat-label">体力</span>
+                <span class="stat-value" id="stamina">100/100</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">位置</span>
+                <span class="stat-value" id="position">1, 1</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">层数</span>
+                <span class="stat-value" id="layer">1</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">视野</span>
+                <span class="stat-value" id="vision">3格</span>
+            </div>
+            
+            <h3>🎒 背包</h3>
+            <div class="stat">
+                <span class="stat-label">纸张</span>
+                <span class="stat-value" id="paper">5</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">铅笔</span>
+                <span class="stat-value" id="pencil">100%</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">火把</span>
+                <span class="stat-value" id="torch">3</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <h3>🎮 操作说明</h3>
+        <p>
+            <span class="key">W</span>
+            <span class="key">A</span>
+            <span class="key">S</span>
+            <span class="key">D</span> 移动
+            <span class="key">空格</span> 绘制地图
+            <span class="key">R</span> 重新生成迷宫
+        </p>
+    </div>
+    
+    <div id="message-log">
+        <div class="message important">欢迎来到迷雾绘者...</div>
+        <div class="message">使用 WASD 移动，空格键绘制地图</div>
+    </div>
+    
+    <script type="module" src="dist/main.js"></script>
+</body>
+</html>
