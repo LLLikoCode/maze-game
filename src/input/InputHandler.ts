@@ -42,6 +42,12 @@ export class InputHandler {
             'j': 'go_down',
             '1': 'equip_torch',
             '2': 'equip_lantern',
+            'q': 'mark_danger',
+            'e': 'mark_treasure',
+            't': 'mark_stairs_up',
+            'g': 'mark_stairs_down',
+            'f5': 'save_game',
+            'l': 'load_game',
         };
         
         const action = actionMap[key];

@@ -5,12 +5,15 @@ import { GameState } from './core/GameState.js';
 import { VisionSystem } from './systems/VisionSystem.js';
 import { LightSystem, LightSourceType } from './systems/LightSystem.js';
 import { MemorySystem } from './systems/MemorySystem.js';
+import { MarkSystem, MarkType } from './systems/MarkSystem.js';
+import { SaveSystem } from './systems/SaveSystem.js';
 import { MazeRenderer } from './rendering/MazeRenderer.js';
 import { MapRenderer } from './rendering/MapRenderer.js';
 import { InputHandler } from './input/InputHandler.js';
 class Game {
     constructor() {
         this.lastUpdateTime = Date.now();
+        this.currentMarkType = MarkType.DANGER;
         // 获取Canvas元素
         this.mazeCanvas = document.getElementById('maze-canvas');
         this.mapCanvas = document.getElementById('map-canvas');
@@ -20,11 +23,17 @@ class Game {
         this.visionSystem = new VisionSystem();
         this.lightSystem = new LightSystem();
         this.memorySystem = new MemorySystem();
+        this.markSystem = new MarkSystem();
+        this.saveSystem = new SaveSystem();
         this.mazeRenderer = new MazeRenderer(this.mazeCanvas, 16);
         this.mapRenderer = new MapRenderer(this.mapCanvas);
         this.inputHandler = new InputHandler();
+        // 尝试加载存档
+        this.tryLoadSave();
         // 启动游戏循环
         this.startGameLoop();
+        // 启动自动保存
+        this.saveSystem.autoSave(this.player, this.gameState);
         // 生成迷宫
         this.generateNewMaze();
         // 设置输入监听
@@ -143,6 +152,66 @@ class Game {
         // 光源快捷键
         this.inputHandler.on('equip_torch', () => this.equipLight(LightSourceType.TORCH));
         this.inputHandler.on('equip_lantern', () => this.equipLight(LightSourceType.LANTERN));
+        // 标记快捷键
+        this.inputHandler.on('mark_danger', () => this.placeMark(MarkType.DANGER));
+        this.inputHandler.on('mark_treasure', () => this.placeMark(MarkType.TREASURE));
+        this.inputHandler.on('mark_stairs_up', () => this.placeMark(MarkType.STAIRS_UP));
+        this.inputHandler.on('mark_stairs_down', () => this.placeMark(MarkType.STAIRS_DOWN));
+        // 存档快捷键
+        this.inputHandler.on('save_game', () => this.saveGame());
+        this.inputHandler.on('load_game', () => this.loadGame());
+    }
+    tryLoadSave() {
+        if (this.saveSystem.hasSave()) {
+            this.log('发现存档，按 L 加载游戏', 'important');
+        }
+    }
+    saveGame() {
+        if (this.saveSystem.save(this.player, this.gameState)) {
+            this.log('游戏已保存', 'important');
+            this.log(`游戏时间: ${this.saveSystem.formatPlayTime()}`);
+        }
+        else {
+            this.log('保存失败', 'danger');
+        }
+    }
+    loadGame() {
+        const saveData = this.saveSystem.load();
+        if (saveData) {
+            // 恢复玩家数据
+            this.player = saveData.player;
+            // 恢复层数据
+            for (const [layer, data] of Object.entries(saveData.layerData)) {
+                this.gameState.setLayerData(parseInt(layer), {
+                    layer: parseInt(layer),
+                    maze: data.maze,
+                    isGenerated: data.isGenerated,
+                });
+            }
+            // 恢复当前层
+            const currentLayer = saveData.currentLayer;
+            this.gameState.setCurrentLayer(currentLayer);
+            const layerData = this.gameState.getLayerData(currentLayer);
+            if (layerData) {
+                this.maze = layerData.maze;
+            }
+            this.log('游戏已加载', 'important');
+            this.log(`游戏时间: ${this.saveSystem.formatPlayTime()}`);
+            this.updateUI();
+            this.render();
+        }
+        else {
+            this.log('没有存档', 'danger');
+        }
+    }
+    placeMark(type) {
+        if (this.markSystem.addMark(this.player.x, this.player.y, type)) {
+            this.log(`标记: ${type}`, 'important');
+            this.render();
+        }
+        else {
+            this.log('标记数量已达上限', 'danger');
+        }
     }
     startGameLoop() {
         const gameLoop = () => {
