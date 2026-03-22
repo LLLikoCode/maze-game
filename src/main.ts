@@ -2,6 +2,7 @@ import { MazeGenerator } from './generation/MazeGenerator.js';
 import { Maze, CellType } from './core/Maze.js';
 import { createPlayer, movePlayer, drawCellOnMap } from './core/Player.js';
 import { Player } from './core/Player.js';
+import { GameState } from './core/GameState.js';
 import { VisionSystem } from './systems/VisionSystem.js';
 import { LightSystem, LightSourceType } from './systems/LightSystem.js';
 import { MemorySystem } from './systems/MemorySystem.js';
@@ -12,6 +13,7 @@ import { InputHandler } from './input/InputHandler.js';
 class Game {
     private maze!: Maze;
     private player!: Player;
+    private gameState: GameState;
     private visionSystem: VisionSystem;
     private lightSystem: LightSystem;
     private memorySystem: MemorySystem;
@@ -32,6 +34,7 @@ class Game {
         this.messageLog = document.getElementById('message-log') as HTMLElement;
         
         // 初始化系统
+        this.gameState = new GameState();
         this.visionSystem = new VisionSystem();
         this.lightSystem = new LightSystem();
         this.memorySystem = new MemorySystem();
@@ -54,17 +57,120 @@ class Game {
         this.log('游戏初始化完成', 'important');
     }
     
-    private generateNewMaze(): void {
-        const generator = new MazeGenerator(31, 31);
+    private generateNewMaze(layer: number = 1): void {
+        const config = this.gameState.getLayerConfig(layer);
+        const generator = new MazeGenerator(config.width, config.height);
         this.maze = generator.generate();
-        this.player = createPlayer(this.maze.entrance.x, this.maze.entrance.y);
+        this.maze.layer = layer;
+        
+        // 保存当前层数据
+        this.gameState.setLayerData(layer, {
+            layer,
+            maze: this.maze,
+            isGenerated: true,
+        });
+        
+        // 如果是第一层，创建玩家
+        if (layer === 1) {
+            this.player = createPlayer(this.maze.entrance.x, this.maze.entrance.y);
+        }
+        
+        this.gameState.setCurrentLayer(layer);
+        this.player.layer = layer;
         
         // 更新视野
         this.visionSystem.updateVisibility(this.maze, this.player);
         
-        this.log('新的迷宫已生成', 'important');
-        this.log(`入口: (${this.maze.entrance.x}, ${this.maze.entrance.y})`);
-        this.log(`出口: (${this.maze.exit.x}, ${this.maze.exit.y})`);
+        this.log(`进入${this.gameState.getLayerName(layer)}`, 'important');
+        this.log(this.gameState.getLayerDescription(layer));
+        if (this.maze.stairsUp) {
+            this.log(`上楼楼梯: (${this.maze.stairsUp.x}, ${this.maze.stairsUp.y})`);
+        }
+        if (this.maze.stairsDown) {
+            this.log(`下楼楼梯: (${this.maze.stairsDown.x}, ${this.maze.stairsDown.y})`);
+        }
+    }
+    
+    private goUp(): void {
+        const currentLayer = this.gameState.getCurrentLayer();
+        if (!this.gameState.canGoUp(currentLayer)) {
+            this.log('已经是最上层了', 'danger');
+            return;
+        }
+        
+        // 检查是否在楼梯上
+        if (!this.maze.stairsUp || 
+            this.player.x !== this.maze.stairsUp.x || 
+            this.player.y !== this.maze.stairsUp.y) {
+            this.log('不在上楼楼梯上', 'danger');
+            return;
+        }
+        
+        const upperLayer = currentLayer - 1;
+        
+        // 检查上层是否已生成
+        if (this.gameState.hasLayerGenerated(upperLayer)) {
+            const layerData = this.gameState.getLayerData(upperLayer)!;
+            this.maze = layerData.maze;
+        } else {
+            this.generateNewMaze(upperLayer);
+            return;
+        }
+        
+        this.gameState.setCurrentLayer(upperLayer);
+        this.player.layer = upperLayer;
+        
+        // 将玩家放在下楼楼梯位置
+        if (this.maze.stairsDown) {
+            this.player.x = this.maze.stairsDown.x;
+            this.player.y = this.maze.stairsDown.y;
+        }
+        
+        this.visionSystem.updateVisibility(this.maze, this.player);
+        this.log(`进入${this.gameState.getLayerName(upperLayer)}`, 'important');
+        this.updateUI();
+        this.render();
+    }
+    
+    private goDown(): void {
+        const currentLayer = this.gameState.getCurrentLayer();
+        if (!this.gameState.canGoDown(currentLayer)) {
+            this.log('已经是最深层了', 'danger');
+            return;
+        }
+        
+        // 检查是否在楼梯上
+        if (!this.maze.stairsDown || 
+            this.player.x !== this.maze.stairsDown.x || 
+            this.player.y !== this.maze.stairsDown.y) {
+            this.log('不在下楼楼梯上', 'danger');
+            return;
+        }
+        
+        const lowerLayer = currentLayer + 1;
+        
+        // 检查下层是否已生成
+        if (this.gameState.hasLayerGenerated(lowerLayer)) {
+            const layerData = this.gameState.getLayerData(lowerLayer)!;
+            this.maze = layerData.maze;
+        } else {
+            this.generateNewMaze(lowerLayer);
+            return;
+        }
+        
+        this.gameState.setCurrentLayer(lowerLayer);
+        this.player.layer = lowerLayer;
+        
+        // 将玩家放在上楼楼梯位置
+        if (this.maze.stairsUp) {
+            this.player.x = this.maze.stairsUp.x;
+            this.player.y = this.maze.stairsUp.y;
+        }
+        
+        this.visionSystem.updateVisibility(this.maze, this.player);
+        this.log(`进入${this.gameState.getLayerName(lowerLayer)}`, 'important');
+        this.updateUI();
+        this.render();
     }
     
     private setupInput(): void {
@@ -74,6 +180,8 @@ class Game {
         this.inputHandler.on('move_right', () => this.move(1, 0));
         this.inputHandler.on('draw_map', () => this.drawMap());
         this.inputHandler.on('regenerate', () => this.regenerate());
+        this.inputHandler.on('go_up', () => this.goUp());
+        this.inputHandler.on('go_down', () => this.goDown());
         
         // 光源快捷键
         this.inputHandler.on('equip_torch', () => this.equipLight(LightSourceType.TORCH));

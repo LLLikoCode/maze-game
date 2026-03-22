@@ -9,4 +9,5 @@ export declare class MazeGenerator {
     private randomOdd;
     private getUnvisitedNeighbors;
     private findFarthestPoint;
+    private findStairsLocation;
 }

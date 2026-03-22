@@ -38,6 +38,10 @@ export class InputHandler {
             'arrowright': 'move_right',
             ' ': 'draw_map',
             'r': 'regenerate',
+            'u': 'go_up',
+            'j': 'go_down',
+            '1': 'equip_torch',
+            '2': 'equip_lantern',
         };
         
         const action = actionMap[key];

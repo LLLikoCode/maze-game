@@ -94,6 +94,26 @@ export class MazeRenderer {
                 this.ctx.textBaseline = 'middle';
                 this.ctx.fillText('出', px + this.cellSize / 2, py + this.cellSize / 2);
                 break;
+            case CellType.STAIRS_UP:
+                this.ctx.fillStyle = '#4a6fa5';
+                this.ctx.fillRect(px, py, this.cellSize, this.cellSize);
+                // 上楼标记
+                this.ctx.fillStyle = '#fff';
+                this.ctx.font = `${this.cellSize * 0.6}px Arial`;
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                this.ctx.fillText('↑', px + this.cellSize / 2, py + this.cellSize / 2);
+                break;
+            case CellType.STAIRS_DOWN:
+                this.ctx.fillStyle = '#8b4513';
+                this.ctx.fillRect(px, py, this.cellSize, this.cellSize);
+                // 下楼标记
+                this.ctx.fillStyle = '#fff';
+                this.ctx.font = `${this.cellSize * 0.6}px Arial`;
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                this.ctx.fillText('↓', px + this.cellSize / 2, py + this.cellSize / 2);
+                break;
         }
         
         // 绘制网格线

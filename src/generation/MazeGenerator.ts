@@ -58,12 +58,26 @@ export class MazeGenerator {
         this.cells[entrance.y][entrance.x].type = CellType.ENTRANCE;
         this.cells[exit.y][exit.x].type = CellType.EXIT;
         
+        // 设置楼梯
+        const stairsUp = this.findStairsLocation(this.cells, entrance, exit, true);
+        const stairsDown = this.findStairsLocation(this.cells, entrance, exit, false);
+        
+        if (stairsUp) {
+            this.cells[stairsUp.y][stairsUp.x].type = CellType.STAIRS_UP;
+        }
+        if (stairsDown) {
+            this.cells[stairsDown.y][stairsDown.x].type = CellType.STAIRS_DOWN;
+        }
+        
         return {
             width: this.width,
             height: this.height,
+            layer: 1,
             cells: this.cells,
             entrance,
             exit,
+            stairsUp,
+            stairsDown,
         };
     }
     
@@ -127,5 +141,30 @@ export class MazeGenerator {
         }
         
         return farthest;
+    }
+    
+    private findStairsLocation(cells: Cell[][], entrance: Point, exit: Point, findUp: boolean): Point | null {
+        // 寻找距离入口和出口都适中的位置放置楼梯
+        const candidates: Point[] = [];
+        const minDistance = 5;
+        
+        for (let y = 1; y < this.height - 1; y++) {
+            for (let x = 1; x < this.width - 1; x++) {
+                if (cells[y][x].type === CellType.PATH) {
+                    const distToEntrance = Math.abs(x - entrance.x) + Math.abs(y - entrance.y);
+                    const distToExit = Math.abs(x - exit.x) + Math.abs(y - exit.y);
+                    
+                    // 楼梯不能太靠近入口或出口
+                    if (distToEntrance > minDistance && distToExit > minDistance) {
+                        candidates.push({ x, y });
+                    }
+                }
+            }
+        }
+        
+        if (candidates.length === 0) return null;
+        
+        // 随机选择一个位置
+        return candidates[Math.floor(Math.random() * candidates.length)];
     }
 }
